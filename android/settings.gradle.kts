@@ -40,10 +40,7 @@ pluginManagement {
 
 plugins {
     id("dev.flutter.flutter-plugin-loader") version "1.0.0"
-    // AGP 9 MyID native SDK lari (capture/video/integrity 3.1.7) bir xil
-    // namespace ishlatgani uchun build ni xato bilan to'xtatadi; AGP 8 da bu
-    // faqat ogohlantirish. MyID plugin o'zi ham 8.12.3 bilan quriladi.
-    id("com.android.application") version "8.12.3" apply false
+    id("com.android.application") version "9.0.1" apply false
     id("org.jetbrains.kotlin.android") version "2.3.20" apply false
 }
 

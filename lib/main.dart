@@ -1,8 +1,11 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:myid/enums.dart';
 import 'package:myid/myid.dart';
 import 'package:myid/myid_config.dart';
@@ -22,12 +25,122 @@ class _MyAppState extends State<MyApp> {
     String? _error;
     MyIdResult? _result;
 
+    String base_url = "https://api.devmyid.uz";
+
+    String? _accessToken;
+    String? _sessionId;
+
+    // 1. FAQAT API TEST QILISH UCHUN FUNKSIYA
+    Future<void> _getAccessToken() async{
+
+        print("========== START: func _getAccessToken() ==========");
+
+        const client_id = 'qa_sdk-AX5YhdzvNYKK9EsZlJBAohWJsjVuDtdxngYzdaB0';
+        const client_secret = 'xzY4Tsu4YdMNTuzrwimcYkVR2PxJUwZjRenXEsOVwpbCpshAzXb8OAPnUfXMHrkbzpCUQbTbrpBVaxjosHzt28GimUEmfgH0qiN9';
+
+        String endPointAT = "/api/v1/auth/clients/access-token";
+
+        var headers = {
+            'Content-Type': 'application/json'
+        };
+
+        var request = http.Request(
+            'POST',
+            Uri.parse(base_url + endPointAT),
+        );
+
+        request.body = json.encode({
+            "client_id": client_id,
+            "client_secret": client_secret
+        });
+
+        request.headers.addAll(headers);
+
+        try{
+            http.StreamedResponse response = await request.send();
+            if (response.statusCode == 200) {
+                String resBody = await response.stream.bytesToString();
+                print("API Success: $resBody");
+
+                // JSON responseni parse qilish
+                final Map<String, dynamic> responseData = json.decode(resBody);
+
+                setState(() {
+                    // We store the token in a variable
+                    _accessToken = responseData['access_token'];
+                });
+
+                print("API Success saved _accessToken: $_accessToken");
+
+                // Token olinishi bilan getSessionId() ishga tushuriladi
+                getSessionId();
+
+                // AGAR TOKEN KELISHI BILAN AVTOMATIK SDK BOSHLANISHINI XOXLASANGIZ:
+                // Keyingi qatordagi izohni olib tashlang:
+                // _startSdkWithToken();
+            } else {
+                print("API Error Reason: ${response.reasonPhrase}");
+            }
+        }catch (e) {
+            print("Network Error: $e");
+        }
+    }
+
+    Future<void> getSessionId() async{
+
+        print("========== START: func getSessionId() ==========");
+
+        String endPointgetSessionId = "/api/v2/sdk/sessions";
+
+        var headers = {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $_accessToken'
+        };
+
+        var request = http.Request(
+            'POST',
+            Uri.parse(base_url + endPointgetSessionId)
+        );
+
+        request.body = json.encode({
+            'birth_date': "1996-03-04",
+            'pinfl': '32910940241399'
+        });
+
+        request.headers.addAll(headers);
+
+        try{
+            http.StreamedResponse response = await request.send();
+            String resBody = await response.stream.bytesToString();
+
+            if (response.statusCode == 200 || response.statusCode == 201) {
+                print("API Success (Session): $resBody");
+
+                // JSON response'ni parse qilish
+                final Map<String, dynamic> responseData = json.decode(resBody);
+
+                setState(() {
+                    // We store the sessionId in a variable
+                    _sessionId = responseData['session_id'];
+                });
+
+                print("API Success saved _sessionId: $_sessionId");
+            } else
+            {
+                print("API Session Error Status: ${response.statusCode}");
+                print("API Session Error Body: $resBody");
+            }
+        }catch (e) {
+            print("Network Error in getSessionId: $e");
+        }
+    }
+
     Future<void> init() async {
         String? error;
         MyIdResult? result;
 
         try {
-            const sessionId = 'your_session_id';
+            final sessionId = _sessionId;
             const clientHash = 'MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwGuhAUsVc3ZgxJRvENzSuwhcvCsQmbSLrYMEBU3azky380HqpmpdrNnW69nu0ODx6mdnQfYaManoYfaUh0G/lUCPVyQ3IRha+x1A+Cp/5pZsQuPoGSeXUusHki49b2m78gvYY0OJJp8LTpcHI6aC5vtzBBmz+yJg8o2rSdP9z/L42ICOrPU2hQ9OlsyB4jM70Prg+/Stqq4IAtSm3E6OouGu7pYbN4KL4BMBWIzzjKLJdsBqEiDE9mMPe1P9XQR/jyJ+DUk4I7afEll2JVYn2qjQFPyHXnNbXzS6YQiuF6IUdsPM+E9sK38kzOGzoLzQjnBWa5mt+/tr02eoqfqTBQIDAQAB';
             const clientHashId = '257fbf27-1c40-4c4d-a7e0-83f09eace896';
 
@@ -44,8 +157,10 @@ class _MyAppState extends State<MyApp> {
 
             error = null;
             result = myIdResult;
+            print("Result: $result");
         } catch (e) {
             error = e.toString();
+            print("Error: $error");
             result = null;
         }
 
@@ -72,9 +187,24 @@ class _MyAppState extends State<MyApp> {
                         children: [
                             MaterialButton(
                                 onPressed: init,
+                                color: Colors.blue,
+                                textColor: Colors.white,
                                 child: const Text("Start SDK"),
                             ),
-                            Text(_result?.code ?? _error ?? 'Failure')
+                            const SizedBox(height: 10),
+                            // Result or Error
+                            Text(_result?.code ?? _error ?? 'Failure'),
+
+                            const SizedBox(height: 20),
+
+                            MaterialButton(
+                                onPressed: _getAccessToken,
+                                color: Colors.green,
+                                textColor: Colors.white,
+                                child: const Text("Test API")
+                            ),
+                            SizedBox(height: 10),
+                            Text("Result uchun joy")
                         ],
                     ),
                 ),

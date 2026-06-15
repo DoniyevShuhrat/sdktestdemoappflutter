@@ -35,17 +35,6 @@ subprojects {
 }
 subprojects {
     project.evaluationDependsOn(":app")
-
-//    afterEvaluate { project ->
-//        if (project.hasProperty("android")) {
-//            // MyID SDK modullari uchun alohida namespace majburlash
-//            if (project.name.contains("myid-integrity-sdk")) {
-//                project.android.namespace = "uz.myid.android.sdk.integrity"
-//            } else if (project.name.contains("myid-video-capture-sdk")) {
-//                project.android.namespace = "uz.myid.android.sdk.video"
-//            }
-//        }
-//    }
 }
 
 tasks.register<Delete>("clean") {

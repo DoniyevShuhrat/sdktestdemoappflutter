@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:myid/enums.dart';
 import 'package:myid/myid.dart';
@@ -257,23 +258,17 @@ class _MyAppState extends State<MyApp> {
                     child: Column(
                         children: [
                             SizedBox(height: 10),
-                            TextFormField(
+                            TextField(
                                 controller: birthdayController,
                                 decoration: const InputDecoration(
                                     labelText: "BirthDay",
                                     hintText: "1996-03-04",
                                     border: OutlineInputBorder()
                                 ),
-                                validator: (value) {
-                                    if (value == null || value.isEmpty) {
-                                        return "Birthday kiritilmagan";
-                                    }
-                                    if (!RegExp(r'^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$')
-                                        .hasMatch(value)) {
-                                        return "Format noto‘g‘ri (YYYY-MM-DD)";
-                                    }
-                                    return null;
-                                },
+                                inputFormatters: [
+                                    FilteringTextInputFormatter.allow(RegExp(r'[0-9-]')),
+                                    BirthdayInputFormatter(),
+                                ],
                             ),
                             SizedBox(height: 10),
 

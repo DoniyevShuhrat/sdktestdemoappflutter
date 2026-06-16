@@ -10,6 +10,8 @@ import 'package:myid/enums.dart';
 import 'package:myid/myid.dart';
 import 'package:myid/myid_config.dart';
 
+import 'birthday_formatter.dart';
+
 void main() {
     runApp(const MyApp());
 }
@@ -22,11 +24,20 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
+    final RegExp birthRegExp = RegExp(
+        r'^\d{4}-(0[1-9]1[0-2])-(0[1-9]|[12]\d|3[01])$'
+    );
+    final RegExp passportRegExp = RegExp(
+        r'^[A-Z]{2}\d{7}$'
+    );
+    final TextEditingController birthdayController = TextEditingController();
+    final TextEditingController passportSerialNumber = TextEditingController();
+    final scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
+
+    // 1. Validatorlar ishlashi uchun FORM KEY yaratamiz
     String? _error;
     MyIdResult? _result;
-
     String base_url = "https://api.devmyid.uz";
-
     String? _accessToken;
     String? _sessionId;
 
@@ -35,8 +46,8 @@ class _MyAppState extends State<MyApp> {
 
         print("========== START: func _getAccessToken() ==========");
 
-        const client_id = 'qa_sdk-AX5YhdzvNYKK9EsZlJBAohWJsjVuDtdxngYzdaB0';
-        const client_secret = 'xzY4Tsu4YdMNTuzrwimcYkVR2PxJUwZjRenXEsOVwpbCpshAzXb8OAPnUfXMHrkbzpCUQbTbrpBVaxjosHzt28GimUEmfgH0qiN9';
+        const client_id = 'test_sdk-QYMePVnmZrKtQpUtlpP4NmjAjeyK5tFiAdgd0MeK';
+        const client_secret = '5bwO8pkeGsd9n1EdREh4QJnfMR5YkhCfTzZqTH0xuD9Sa3lWZXUVtG0MdYRsGqcR7NEppVyG09fCqIgCv21JbqRqmBQyQCzfbVAO';
 
         String endPointAT = "/api/v1/auth/clients/access-token";
 
@@ -73,21 +84,20 @@ class _MyAppState extends State<MyApp> {
                 print("API Success saved _accessToken: $_accessToken");
 
                 // Token olinishi bilan getSessionId() ishga tushuriladi
-                getSessionId();
+                // _getSessionId();
 
                 // AGAR TOKEN KELISHI BILAN AVTOMATIK SDK BOSHLANISHINI XOXLASANGIZ:
                 // Keyingi qatordagi izohni olib tashlang:
                 // _startSdkWithToken();
             } else {
-                print("API Error Reason: ${response.reasonPhrase}");
+                print("API Error Reason (_getAccessToken): ${response.reasonPhrase}");
             }
         }catch (e) {
-            print("Network Error: $e");
+            print("Network Error in _getAccessToken: $e");
         }
     }
 
-    Future<void> getSessionId() async{
-
+    Future<void> _getSessionId() async{
         print("========== START: func getSessionId() ==========");
 
         String endPointgetSessionId = "/api/v2/sdk/sessions";
@@ -104,7 +114,7 @@ class _MyAppState extends State<MyApp> {
 
         request.body = json.encode({
             'birth_date': "1996-03-04",
-            'pinfl': '32910940241399'
+            'pinfl': '30403962610011'
         });
 
         request.headers.addAll(headers);
@@ -127,12 +137,55 @@ class _MyAppState extends State<MyApp> {
                 print("API Success saved _sessionId: $_sessionId");
             } else
             {
-                print("API Session Error Status: ${response.statusCode}");
-                print("API Session Error Body: $resBody");
+                print("API Session Error Body (_getAccessToken): ${response.statusCode} | $resBody");
             }
         }catch (e) {
             print("Network Error in getSessionId: $e");
         }
+    }
+
+    Future<void> init2() async {
+        String? error;
+        MyIdResult? result;
+
+        await _getAccessToken();
+
+        await _getSessionId();
+
+        try {
+            final sessionId = _sessionId;
+            const clientHash = 'MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwGuhAUsVc3ZgxJRvENzSuwhcvCsQmbSLrYMEBU3azky380HqpmpdrNnW69nu0ODx6mdnQfYaManoYfaUh0G/lUCPVyQ3IRha+x1A+Cp/5pZsQuPoGSeXUusHki49b2m78gvYY0OJJp8LTpcHI6aC5vtzBBmz+yJg8o2rSdP9z/L42ICOrPU2hQ9OlsyB4jM70Prg+/Stqq4IAtSm3E6OouGu7pYbN4KL4BMBWIzzjKLJdsBqEiDE9mMPe1P9XQR/jyJ+DUk4I7afEll2JVYn2qjQFPyHXnNbXzS6YQiuF6IUdsPM+E9sK38kzOGzoLzQjnBWa5mt+/tr02eoqfqTBQIDAQAB';
+            const clientHashId = '257fbf27-1c40-4c4d-a7e0-83f09eace896';
+
+            final myIdResult = await MyIdClient.start(
+                config: MyIdConfig(
+                    // PROVIDE CLIENT_ID, CLIENT_HASH and CLIENT_HASH_ID. YOU'VE GOT FROM YOUR BACKEND
+                    sessionId: sessionId,
+                    clientHash: clientHash,
+                    clientHashId: clientHashId,
+                    environment: MyIdEnvironment.DEBUG,
+                    entryType: MyIdEntryType.IDENTIFICATION,
+                ),
+                iosAppearance: const MyIdIOSAppearance());
+
+            error = null;
+            result = myIdResult;
+            print("Result: $result");
+        } catch (e) {
+            error = e.toString();
+            print("Error: $error");
+            result = null;
+        }
+
+        // If the widget was removed from the tree while the asynchronous platform
+        // message was in flight, we want to discard the reply rather than calling
+        // setState to update our non-existent appearance.
+        if (!mounted) return;
+
+        setState(() {
+            _error = error;
+            _result = result;
+        });
     }
 
     Future<void> init() async {
@@ -175,9 +228,27 @@ class _MyAppState extends State<MyApp> {
         });
     }
 
+    Future<void> startSdk() async {
+        print("========== START: func startSdk() ==========");
+        String birthday = birthdayController.text.trim();
+        String passportSerial = passportSerialNumber.text.trim();
+
+        if (birthday.isEmpty || passportSerial.isEmpty) {
+            scaffoldMessengerKey.currentState!.showSnackBar(
+                const SnackBar(
+                    content: Text("Barcha maydonlarni to'ldiring"),
+                ),
+            );
+            return;
+        }
+
+        init2();
+    }
+
     @override
     Widget build(BuildContext context) {
         return MaterialApp(
+            scaffoldMessengerKey: scaffoldMessengerKey,
             home: Scaffold(
                 appBar: AppBar(
                     title: const Text("MyId Sample"),
@@ -185,8 +256,37 @@ class _MyAppState extends State<MyApp> {
                 body: Center(
                     child: Column(
                         children: [
+                            SizedBox(height: 10),
+                            TextFormField(
+                                controller: birthdayController,
+                                decoration: const InputDecoration(
+                                    labelText: "BirthDay",
+                                    hintText: "1996-03-04",
+                                    border: OutlineInputBorder()
+                                ),
+                                validator: (value) {
+                                    if (value == null || value.isEmpty) {
+                                        return "Birthday kiritilmagan";
+                                    }
+                                    if (!RegExp(r'^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$')
+                                        .hasMatch(value)) {
+                                        return "Format noto‘g‘ri (YYYY-MM-DD)";
+                                    }
+                                    return null;
+                                },
+                            ),
+                            SizedBox(height: 10),
+
+                            TextField(
+                                controller: passportSerialNumber,
+                                decoration: InputDecoration(
+                                    labelText: "Passport Serial",
+                                    hintText: "AA1234567",
+                                    border: OutlineInputBorder()
+                                ),
+                            ),
                             MaterialButton(
-                                onPressed: init,
+                                onPressed: init2,
                                 color: Colors.blue,
                                 textColor: Colors.white,
                                 child: const Text("Start SDK"),

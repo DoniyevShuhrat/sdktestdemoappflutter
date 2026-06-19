@@ -25,7 +25,6 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
-
   final TextEditingController phoneNumberController = TextEditingController();
   final TextEditingController passSNPnflController = TextEditingController();
   final TextEditingController birthdayController = TextEditingController();
@@ -33,6 +32,7 @@ class _MyAppState extends State<MyApp> {
   final TextEditingController passportSerialNumber = TextEditingController();
   final scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
   bool isResidentBoolean = true;
+  bool _isLoading = false;
 
   double _threshold = 0.8;
 

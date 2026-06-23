@@ -102,18 +102,40 @@ class _MyAppState extends State<MyApp> {
     String? pass_data_pnfl,
     double? threshold,
   ) async {
+    // 2. API so'rovlari boshlanishidan oldin loadingni yoqamiz
+    setState(() {
+      _isLoading = true;
+      _error = null; // Eski xatoliklarni tozalaymiz
+      _result = null; // Eski natijalarni tozalaymiz
+    });
+
     String? error;
     MyIdResult? result;
 
-    await _getAccessToken();
+    try {
+      print("========== API so'rovlari boshlandi ==========");
 
-    await _getSessionId(
-      phoneNumber,
-      birthday,
-      isResident,
-      pass_data_pnfl,
-      threshold,
-    );
+      await _getAccessToken();
+
+      await _getSessionId(
+        phoneNumber,
+        birthday,
+        isResident,
+        pass_data_pnfl,
+        threshold,
+      );
+
+      print("========== API muvaffaqiyatli tugadi ==========");
+    } catch (e) {
+      print("API lardan birida xatolik: $e");
+      error = "Tarmoq yoki server xatoligi yuz berdi.";
+    } finally {
+      // 3. API lardan muvaffaqiyatli o'tsak ham, xato bo'lsa ham loadingni O'CHIRAMIZ.
+      // Chunki keyingi qadamda yo SDK kamerasi ochiladi yoki xato ko'rsatiladi.
+      setState(() {
+        _isLoading = false;
+      });
+    }
 
     try {
       final sessionId = _sessionId;
@@ -306,137 +328,155 @@ class _MyAppState extends State<MyApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      debugShowCheckedModeBanner: false,
       scaffoldMessengerKey: scaffoldMessengerKey,
       home: Scaffold(
         appBar: AppBar(title: const Text("MyId Sample")),
-        body: Center(
-          child: Column(
-            children: [
-              SizedBox(height: 10),
-              TextField(
-                controller: birthdayController,
-                decoration: const InputDecoration(
-                  labelText: "BirthDay",
-                  hintText: "1996-03-04",
-                  border: OutlineInputBorder(),
-                ),
-                inputFormatters: [
-                  FilteringTextInputFormatter.allow(RegExp(r'[0-9-]')),
-                  BirthdayInputFormatter(),
-                ],
-              ),
-              SizedBox(height: 10),
-
-              TextField(
-                controller: passSNPnflController,
-                decoration: const InputDecoration(
-                  labelText: "SerialNumber | PNFL",
-                  hintText: "AD1234567 | 12345678901234",
-                  border: OutlineInputBorder(),
-                ),
-                inputFormatters: [UniversalPassSNPnflInputFormatter()],
-              ),
-
-              SizedBox(height: 10),
-              TextField(
-                controller: phoneNumberController,
-                decoration: const InputDecoration(
-                  labelText: "PhoneNumber",
-                  hintText: "998901234567",
-                  border: OutlineInputBorder(),
-                ),
-              ),
-
-              if (false)
+        // SingleChildScrollView qo'shildi va TextField'lar chetiga yopishmasligi uchun Padding berildi
+        body: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsetsGeometry.all(16.0),
+            // Display atrofida joy tashlash
+            child: Column(
+              children: [
+                SizedBox(height: 10),
                 TextField(
-                  controller: pnflController,
+                  controller: birthdayController,
                   decoration: const InputDecoration(
-                    labelText: "PNFL",
-                    hintText: "12345678901234",
+                    labelText: "BirthDay",
+                    hintText: "1996-03-04",
                     border: OutlineInputBorder(),
                   ),
                   inputFormatters: [
-                    FilteringTextInputFormatter.allow(RegExp(r'[0-9]')),
-                    LengthLimitingTextInputFormatter(14),
+                    FilteringTextInputFormatter.allow(RegExp(r'[0-9-]')),
+                    BirthdayInputFormatter(),
+                  ],
+                ),
+                SizedBox(height: 10),
+
+                TextField(
+                  controller: passSNPnflController,
+                  decoration: const InputDecoration(
+                    labelText: "SerialNumber | PNFL",
+                    hintText: "AD1234567 | 12345678901234",
+                    border: OutlineInputBorder(),
+                  ),
+                  inputFormatters: [UniversalPassSNPnflInputFormatter()],
+                ),
+
+                SizedBox(height: 10),
+                TextField(
+                  controller: phoneNumberController,
+                  decoration: const InputDecoration(
+                    labelText: "PhoneNumber",
+                    hintText: "998901234567",
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+
+                if (false)
+                  TextField(
+                    controller: pnflController,
+                    decoration: const InputDecoration(
+                      labelText: "PNFL",
+                      hintText: "12345678901234",
+                      border: OutlineInputBorder(),
+                    ),
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(RegExp(r'[0-9]')),
+                      LengthLimitingTextInputFormatter(14),
+                    ],
+                  ),
+
+                Row(
+                  // 1. Elementlarni gorizontal (chapdan-o'ngga) o'rtaga tekislaydi
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  // 2. Elementlarni vertikal (tepadan-pastga) bir xil o'rtada ushlaydi
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Text("IsResident"),
+                    Switch(
+                      value: isResidentBoolean,
+                      onChanged: (bool value) {
+                        setState(() {
+                          isResidentBoolean = value;
+                        });
+                      },
+                    ),
                   ],
                 ),
 
-              Row(
-                // 1. Elementlarni gorizontal (chapdan-o'ngga) o'rtaga tekislaydi
-                mainAxisAlignment: MainAxisAlignment.center,
-                // 2. Elementlarni vertikal (tepadan-pastga) bir xil o'rtada ushlaydi
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Text("IsResident"),
-                  Switch(
-                    value: isResidentBoolean,
-                    onChanged: (bool value) {
-                      setState(() {
-                        isResidentBoolean = value;
-                      });
-                    },
-                  ),
-                ],
-              ),
-
-              Column(
-                children: [
-                  Text("Threshold: ${_threshold.toStringAsFixed(2)}"),
-                  Slider(
-                    value: _threshold,
-                    min: 0.6,
-                    max: 0.99,
-                    divisions: 30,
-                    onChanged: (double value) {
-                      setState(() {
-                        _threshold = value;
-                      });
-                    },
-                  ),
-                ],
-              ),
-
-              MaterialButton(
-                onPressed: startSdk,
-                color: Colors.blue,
-                textColor: Colors.white,
-                child: const Text("Start SDK"),
-              ),
-              const SizedBox(height: 10),
-              // Result or Error
-              Text(_result?.code ?? _error ?? 'Status'),
-
-              const SizedBox(height: 20),
-
-              if (false)
                 Column(
                   children: [
-                    TextField(
-                      controller: passportSerialNumber,
-                      decoration: InputDecoration(
-                        labelText: "Passport Serial",
-                        hintText: "AA1234567",
-                        border: OutlineInputBorder(),
-                      ),
-                      inputFormatters: [
-                        FilteringTextInputFormatter.allow(
-                          RegExp(r'[A-Za-z0-9]'),
-                        ),
-                        LengthLimitingTextInputFormatter(9),
-                        PassportserialnumberFormatter(),
-                      ],
+                    Text("Threshold: ${_threshold.toStringAsFixed(2)}"),
+                    Slider(
+                      value: _threshold,
+                      min: 0.6,
+                      max: 0.99,
+                      divisions: 30,
+                      onChanged: (double value) {
+                        setState(() {
+                          _threshold = value;
+                        });
+                      },
                     ),
-                    MaterialButton(
-                      onPressed: _getAccessToken,
-                      color: Colors.green,
-                      textColor: Colors.white,
-                      child: const Text("Test API"),
-                    ),
-                    SizedBox(height: 10),
-                    Text("Result uchun joy"),
                   ],
                 ),
-            ],
+
+                MaterialButton(
+                  // 1. Agar _isLoading true bo'lsa, Btn bosilmaydi (null bo'ladi), aks holda startSdk ishlaydi
+                  onPressed: _isLoading ? null : startSdk,
+                  color: Colors.blue,
+                  textColor: Colors.white,
+                  child: _isLoading
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.blue, // Btn ichidagi loading color
+                          ),
+                        )
+                      : const Text(
+                          "Start SDK", // by default ko'rinadigan content
+                        ),
+                ),
+                const SizedBox(height: 10),
+                // Result or Error
+                Text(_result?.code ?? _error ?? 'Status'),
+
+                const SizedBox(height: 20),
+
+                if (false)
+                  Column(
+                    children: [
+                      TextField(
+                        controller: passportSerialNumber,
+                        decoration: InputDecoration(
+                          labelText: "Passport Serial",
+                          hintText: "AA1234567",
+                          border: OutlineInputBorder(),
+                        ),
+                        inputFormatters: [
+                          FilteringTextInputFormatter.allow(
+                            RegExp(r'[A-Za-z0-9]'),
+                          ),
+                          LengthLimitingTextInputFormatter(9),
+                          PassportserialnumberFormatter(),
+                        ],
+                      ),
+                      MaterialButton(
+                        onPressed: _getAccessToken,
+                        color: Colors.green,
+                        textColor: Colors.white,
+                        child: const Text("Test API"),
+                      ),
+                      SizedBox(height: 10),
+                      Text("Result uchun joy"),
+                    ],
+                  ),
+              ],
+            ),
           ),
         ),
       ),

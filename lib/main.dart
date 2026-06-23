@@ -31,7 +31,8 @@ class _MyAppState extends State<MyApp> {
   final TextEditingController pnflController = TextEditingController();
   final TextEditingController passportSerialNumber = TextEditingController();
   final scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
-  bool isResidentBoolean = true;
+  MyIdLocale? selectedLocale = MyIdLocale.UZBEK;
+  bool _isResidentBoolean = true;
   bool _isLoading = false;
 
   double _threshold = 0.8;
@@ -39,6 +40,7 @@ class _MyAppState extends State<MyApp> {
   // 1. Validatorlar ishlashi uchun FORM KEY yaratamiz
   String? _error;
   MyIdResult? _result;
+  String? _resultJson;
   String base_url = "https://api.devmyid.uz";
   String? _accessToken;
   String? _sessionId;
@@ -107,10 +109,12 @@ class _MyAppState extends State<MyApp> {
       _isLoading = true;
       _error = null; // Eski xatoliklarni tozalaymiz
       _result = null; // Eski natijalarni tozalaymiz
+      _resultJson = null;
     });
 
     String? error;
     MyIdResult? result;
+    String? resultJson;
 
     try {
       print("========== API so'rovlari boshlandi ==========");
@@ -151,13 +155,27 @@ class _MyAppState extends State<MyApp> {
           clientHashId: clientHashId,
           environment: MyIdEnvironment.DEBUG,
           entryType: MyIdEntryType.IDENTIFICATION,
+
+          ///=====================================
+          residency: _isResidentBoolean
+              ? MyIdResidency.RESIDENT
+              : MyIdResidency.NON_RESIDENT,
+
+          locale: MyIdLocale.ENGLISH,
+          cameraShape: MyIdCameraShape.ELLIPSE,
         ),
         iosAppearance: const MyIdIOSAppearance(),
       );
 
       error = null;
       result = myIdResult;
-      print("Result: $result");
+      var resCode = result.code;
+      var resBase64 = result.base64;
+
+      resultJson = jsonEncode({'code': resCode, 'base64': resBase64});
+
+      print(result.toString());
+      print("Results: $result | resCode: $resCode | resBase64: $resBase64");
     } catch (e) {
       error = e.toString();
       print("Error: $error");
@@ -172,6 +190,7 @@ class _MyAppState extends State<MyApp> {
     setState(() {
       _error = error;
       _result = result;
+      _resultJson = resultJson;
     });
   }
 
@@ -311,7 +330,7 @@ class _MyAppState extends State<MyApp> {
     String? passDataPnfl = passSNPnflController.text.trim().isEmpty
         ? null
         : passSNPnflController.text.trim();
-    bool isResidentStatus = isResidentBoolean;
+    bool isResidentStatus = _isResidentBoolean;
     double? threshold = 0.8;
     print("isResidentStatus: $isResidentStatus");
 
@@ -396,10 +415,10 @@ class _MyAppState extends State<MyApp> {
                   children: [
                     Text("IsResident"),
                     Switch(
-                      value: isResidentBoolean,
+                      value: _isResidentBoolean,
                       onChanged: (bool value) {
                         setState(() {
-                          isResidentBoolean = value;
+                          _isResidentBoolean = value;
                         });
                       },
                     ),
@@ -423,6 +442,27 @@ class _MyAppState extends State<MyApp> {
                   ],
                 ),
 
+                DropdownButtonFormField<MyIdLocale>(
+                  value: selectedLocale,
+                  decoration: InputDecoration(
+                    labelText: "Language",
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10)
+                    ),
+                  ),
+                  items: MyIdLocale.values.map((locale) {
+                    return DropdownMenuItem(
+                      value: locale,
+                      child: Text(locale.name),
+                    );
+                  }).toList(),
+                  onChanged: (value) {
+                    setState(() {
+                      selectedLocale = value;
+                    });
+                  },
+                ),
+
                 MaterialButton(
                   // 1. Agar _isLoading true bo'lsa, Btn bosilmaydi (null bo'ladi), aks holda startSdk ishlaydi
                   onPressed: _isLoading ? null : startSdk,
@@ -441,10 +481,37 @@ class _MyAppState extends State<MyApp> {
                           "Start SDK", // by default ko'rinadigan content
                         ),
                 ),
-                const SizedBox(height: 10),
-                // Result or Error
-                Text(_result?.code ?? _error ?? 'Status'),
 
+                const SizedBox(height: 10),
+
+                // Result or Error
+                Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: () async {
+                      final text = _resultJson ?? _error ?? 'Status';
+
+                      await Clipboard.setData(ClipboardData(text: text));
+
+                      scaffoldMessengerKey.currentState!.showSnackBar(
+                        SnackBar(content: Text("Copied: Json")),
+                      );
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: SizedBox(
+                        height: 55,
+                        child: Text(
+                          _resultJson ?? _error ?? 'Status',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
                 const SizedBox(height: 20),
 
                 if (false)

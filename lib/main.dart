@@ -31,7 +31,12 @@ class _MyAppState extends State<MyApp> {
   final TextEditingController pnflController = TextEditingController();
   final TextEditingController passportSerialNumber = TextEditingController();
   final scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
+
   MyIdLocale? selectedLocale = MyIdLocale.UZBEK;
+  MyIdCameraShape? selectedCameraShape = MyIdCameraShape.CIRCLE;
+
+  bool _withSoundGuides = true;
+  bool _showErrorScreen = false;
   bool _isResidentBoolean = true;
   bool _isLoading = false;
 
@@ -161,8 +166,11 @@ class _MyAppState extends State<MyApp> {
               ? MyIdResidency.RESIDENT
               : MyIdResidency.NON_RESIDENT,
 
-          locale: MyIdLocale.ENGLISH,
-          cameraShape: MyIdCameraShape.ELLIPSE,
+          locale: selectedLocale,
+          cameraShape: selectedCameraShape,
+          // cameraResolution: MyIdCameraResolution.HIGH,
+          // imageFormat: MyIdImageFormat.PNG,
+          withSoundGuides: _withSoundGuides,
         ),
         iosAppearance: const MyIdIOSAppearance(),
       );
@@ -344,6 +352,30 @@ class _MyAppState extends State<MyApp> {
     init2(phoneNumber, birthday, isResidentStatus, passDataPnfl, threshold);
   }
 
+  Widget buildSection({required String title, required List<Widget> children}) {
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.blueGrey, width: 1),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+
+          const Divider(),
+
+          ...children,
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -413,7 +445,7 @@ class _MyAppState extends State<MyApp> {
                   // 2. Elementlarni vertikal (tepadan-pastga) bir xil o'rtada ushlaydi
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    Text("IsResident"),
+                    Text("IsResident: "),
                     Switch(
                       value: _isResidentBoolean,
                       onChanged: (bool value) {
@@ -425,7 +457,7 @@ class _MyAppState extends State<MyApp> {
                   ],
                 ),
 
-                Column(
+                Row(
                   children: [
                     Text("Threshold: ${_threshold.toStringAsFixed(2)}"),
                     Slider(
@@ -442,27 +474,82 @@ class _MyAppState extends State<MyApp> {
                   ],
                 ),
 
-                DropdownButtonFormField<MyIdLocale>(
-                  value: selectedLocale,
-                  decoration: InputDecoration(
-                    labelText: "Language",
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10)
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text("widthSoundGuides: "),
+                    Switch(
+                      value: _withSoundGuides,
+                      onChanged: (bool value) {
+                        setState(() {
+                          _withSoundGuides = value;
+                        });
+                      },
                     ),
-                  ),
-                  items: MyIdLocale.values.map((locale) {
-                    return DropdownMenuItem(
-                      value: locale,
-                      child: Text(locale.name),
-                    );
-                  }).toList(),
-                  onChanged: (value) {
-                    setState(() {
-                      selectedLocale = value;
-                    });
-                  },
+                  ],
                 ),
 
+                if (false)
+                  DropdownButtonFormField<MyIdLocale>(
+                    value: selectedLocale,
+                    decoration: InputDecoration(
+                      labelText: "Language",
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    items: MyIdLocale.values.map((locale) {
+                      return DropdownMenuItem(
+                        value: locale,
+                        child: Text(locale.name),
+                      );
+                    }).toList(),
+                    onChanged: (value) {
+                      setState(() {
+                        selectedLocale = value;
+                      });
+                    },
+                  ),
+
+                /// Language part
+                buildSection(
+                  title: "Language",
+                  children: MyIdLocale.values.map((locale) {
+                    return RadioListTile<MyIdLocale>(
+                      title: Text(locale.name),
+                      value: locale,
+                      groupValue: selectedLocale,
+                      onChanged: (value) {
+                        setState(() {
+                          selectedLocale = value;
+                        });
+                      },
+                    );
+                  }).toList(),
+                ),
+
+                /// CameraShape part
+                buildSection(
+                  title: "CameraShape",
+                  children: MyIdCameraShape.values.map((shape) {
+                    return RadioListTile<MyIdCameraShape>(
+                      title: Text(
+                        shape.toString(),
+                        style: TextStyle(fontSize: 14),
+                      ),
+                      value: shape,
+                      groupValue: selectedCameraShape,
+
+                      onChanged: (value) {
+                        setState(() {
+                          selectedCameraShape = value;
+                        });
+                      },
+                    );
+                  }).toList(),
+                ),
+
+                ///===============================///////
                 MaterialButton(
                   // 1. Agar _isLoading true bo'lsa, Btn bosilmaydi (null bo'ladi), aks holda startSdk ishlaydi
                   onPressed: _isLoading ? null : startSdk,
